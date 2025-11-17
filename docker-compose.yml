@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # Prometheus
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.48.1
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -73,7 +71,7 @@ services:
 
   # Grafana (Optional)
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.3
     container_name: grafana
     ports:
       - "3000:3000"
