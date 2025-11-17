@@ -3,8 +3,27 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 ![React](https://img.shields.io/badge/react-18.3.1-61dafb.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
+![Docker Hub](https://img.shields.io/badge/docker%20hub-arunbalaji23-blue.svg)
 
 An AI-powered monitoring tool that converts natural language queries into PromQL (Prometheus Query Language) and visualizes metrics with interactive charts. Built for DevOps engineers, students, and anyone who wants to query Prometheus without memorizing PromQL syntax.
+
+## 🐳 Quick Start with Docker Hub
+
+Pull and run the pre-built images:
+
+```bash
+# Pull images from Docker Hub
+docker pull arunbalaji23/prometheus-nl2promql-backend:latest
+docker pull arunbalaji23/prometheus-nl2promql-frontend:latest
+
+# Or use docker-compose (recommended)
+docker-compose --profile with-grafana up -d
+```
+
+**Docker Hub Images:**
+- Backend: [`arunbalaji23/prometheus-nl2promql-backend`](https://hub.docker.com/r/arunbalaji23/prometheus-nl2promql-backend)
+- Frontend: [`arunbalaji23/prometheus-nl2promql-frontend`](https://hub.docker.com/r/arunbalaji23/prometheus-nl2promql-frontend)
 
 ## 🌟 Features
 
