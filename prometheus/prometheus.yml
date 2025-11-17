@@ -1,0 +1,32 @@
+# Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'prometheus-nl2promql'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Windows Exporter (adjust for your setup)
+  # If running on Windows host, use host.docker.internal
+  - job_name: 'windows'
+    static_configs:
+      - targets: ['host.docker.internal:9182']
+        labels:
+          instance: 'windows-host'
+    # For Docker Desktop on Windows, this works
+    # For Docker on Linux with Windows exporter on another machine, adjust accordingly
+
+  # Backend API metrics
+  - job_name: 'node_backend'
+    static_configs:
+      - targets: ['localhost:4000']
+        labels:
+          app: 'node_backend'
+          instance: 'localhost:4000'
+

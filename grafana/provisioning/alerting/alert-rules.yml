@@ -1,0 +1,586 @@
+apiVersion: 1
+
+groups:
+  # Windows System Alerts
+  - orgId: 1
+    name: windows-system-alerts
+    folder: System Monitoring
+    interval: 1m
+    rules:
+      # High CPU Usage Alert
+      - uid: high-cpu-usage
+        title: High CPU Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'rate(windows_cpu_time_total{mode!="idle"}[5m]) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 80
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'CPU usage is above 80% (current: {{ $values.A.Value }}%)'
+          summary: High CPU usage detected on {{ $labels.instance }}
+        labels:
+          severity: warning
+
+      # Critical CPU Usage Alert
+      - uid: critical-cpu-usage
+        title: Critical CPU Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'rate(windows_cpu_time_total{mode!="idle"}[5m]) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 95
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          description: 'CPU usage is critically high at {{ $values.A.Value }}%'
+          summary: CRITICAL - CPU usage exceeding 95% on {{ $labels.instance }}
+        labels:
+          severity: critical
+
+      # Low Memory Available Alert
+      - uid: low-memory-available
+        title: Low Memory Available
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: '(windows_os_physical_memory_free_bytes / windows_cs_physical_memory_bytes) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'Available memory is below 10% (current: {{ $values.A.Value }}%)'
+          summary: Low memory on {{ $labels.instance }}
+        labels:
+          severity: warning
+
+      # Critical Memory Alert
+      - uid: critical-memory
+        title: Critical Memory Shortage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: '(windows_os_physical_memory_free_bytes / windows_cs_physical_memory_bytes) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          description: 'Available memory critically low at {{ $values.A.Value }}%'
+          summary: CRITICAL - Memory shortage on {{ $labels.instance }}
+        labels:
+          severity: critical
+
+      # Low Disk Space Alert
+      - uid: low-disk-space
+        title: Low Disk Space
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: '(windows_logical_disk_free_bytes / windows_logical_disk_size_bytes) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'Disk {{ $labels.volume }} has less than 10% free space ({{ $values.A.Value }}%)'
+          summary: Low disk space on {{ $labels.instance }}
+        labels:
+          severity: warning
+
+      # Critical Disk Space Alert
+      - uid: critical-disk-space
+        title: Critical Disk Space
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: '(windows_logical_disk_free_bytes / windows_logical_disk_size_bytes) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          description: 'Disk {{ $labels.volume }} critically low at {{ $values.A.Value }}% free'
+          summary: CRITICAL - Disk space shortage on {{ $labels.instance }}
+        labels:
+          severity: critical
+
+      # High Network Errors
+      - uid: high-network-errors
+        title: High Network Errors
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'rate(windows_net_packets_received_errors_total[5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'Network interface {{ $labels.nic }} experiencing high error rate'
+          summary: High network errors on {{ $labels.instance }}
+        labels:
+          severity: warning
+
+  # Service Health Alerts
+  - orgId: 1
+    name: service-health-alerts
+    folder: Service Monitoring
+    interval: 1m
+    rules:
+      # Prometheus Down
+      - uid: prometheus-down
+        title: Prometheus Service Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'up{job="prometheus"}'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        annotations:
+          description: 'Prometheus service is not responding'
+          summary: CRITICAL - Prometheus is down
+        labels:
+          severity: critical
+
+      # Windows Exporter Down
+      - uid: windows-exporter-down
+        title: Windows Exporter Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'up{job="windows"}'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        annotations:
+          description: 'Windows Exporter is not being scraped by Prometheus'
+          summary: Windows Exporter is down on {{ $labels.instance }}
+        labels:
+          severity: critical
+
+      # Backend API Down
+      - uid: backend-api-down
+        title: Backend API Service Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'up{job="node_backend"}'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        annotations:
+          description: 'Backend API service is not responding'
+          summary: Backend API is down
+        labels:
+          severity: critical
+
+      # High API Error Rate
+      - uid: high-api-error-rate
+        title: High API Error Rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'rate(http_requests_total{status_code=~"5.."}[5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: reduce
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'API experiencing high error rate (5xx responses)'
+          summary: High error rate on Backend API
+        labels:
+          severity: warning
