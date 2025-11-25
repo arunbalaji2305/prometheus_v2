@@ -73,7 +73,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       # Alerting configuration
-      - GF_ALERTING_ENABLED=true
+      #- GF_ALERTING_ENABLED=true (changed this)
       - GF_UNIFIED_ALERTING_ENABLED=true
       # Email notification settings - UPDATE THESE WITH YOUR SMTP DETAILS
       - GF_SMTP_ENABLED=true
