@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Copy, CheckCheck, ExternalLink } from 'lucide-react';
-import { isGrafanaEnabled, generateGrafanaUrl } from '../utils/grafanaUtils';
+import { Copy, CheckCheck, ExternalLink, LayoutDashboard } from 'lucide-react';
+import { isGrafanaEnabled, generateGrafanaExploreUrl, generateGrafanaDashboardUrl } from '../utils/grafanaUtils';
 
 export default function PromQLDisplay({ naturalQuery, promqlQuery, lookback }) {
   const [copied, setCopied] = useState(false);
@@ -16,7 +16,14 @@ export default function PromQLDisplay({ naturalQuery, promqlQuery, lookback }) {
   };
 
   const handleOpenInGrafana = () => {
-    const url = generateGrafanaUrl(promqlQuery, lookback);
+    const url = generateGrafanaExploreUrl(promqlQuery, lookback);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleOpenDashboard = () => {
+    const url = generateGrafanaDashboardUrl(naturalQuery, promqlQuery, lookback);
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
@@ -46,14 +53,24 @@ export default function PromQLDisplay({ naturalQuery, promqlQuery, lookback }) {
             </label>
             <div className="flex gap-2">
               {showGrafanaButton && (
-                <button
-                  onClick={handleOpenInGrafana}
-                  className="flex items-center gap-1.5 px-3 py-1 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
-                  title="Open in Grafana Explore"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Grafana
-                </button>
+                <>
+                  <button
+                    onClick={handleOpenDashboard}
+                    className="flex items-center gap-1.5 px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors"
+                    title="Open Smart Dashboard with relevant panels"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={handleOpenInGrafana}
+                    className="flex items-center gap-1.5 px-3 py-1 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                    title="Open in Grafana Explore"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Explore
+                  </button>
+                </>
               )}
               <button
                 onClick={handleCopy}
@@ -80,10 +97,15 @@ export default function PromQLDisplay({ naturalQuery, promqlQuery, lookback }) {
 
         {showGrafanaButton && (
           <div className="flex items-start gap-2 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
-            <ExternalLink className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-blue-300">
-              Click <strong>Open in Grafana</strong> to explore this query in Grafana's Explore view with the same time range.
-            </p>
+            <LayoutDashboard className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-300">
+              <p className="mb-1">
+                <strong>Dashboard:</strong> Opens the comprehensive Windows Exporter Dashboard with all system metrics (CPU, Memory, Disk, Network).
+              </p>
+              <p>
+                <strong>Explore:</strong> Opens Grafana Explore view with just your specific query for detailed investigation.
+              </p>
+            </div>
           </div>
         )}
       </div>

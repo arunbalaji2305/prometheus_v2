@@ -75,13 +75,14 @@ services:
       # Alerting configuration
       - GF_ALERTING_ENABLED=true
       - GF_UNIFIED_ALERTING_ENABLED=true
-      # Email notification settings (configure for your SMTP server)
-      - GF_SMTP_ENABLED=false
-      # - GF_SMTP_HOST=smtp.gmail.com:587
-      # - GF_SMTP_USER=your-email@gmail.com
-      # - GF_SMTP_PASSWORD=your-app-password
-      # - GF_SMTP_FROM_ADDRESS=your-email@gmail.com
-      # - GF_SMTP_FROM_NAME=Grafana Alerts
+      # Email notification settings - UPDATE THESE WITH YOUR SMTP DETAILS
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=${SMTP_HOST:-smtp.gmail.com:587}
+      - GF_SMTP_USER=${SMTP_USER:-your-email@gmail.com}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD:-your-app-password}
+      - GF_SMTP_FROM_ADDRESS=${SMTP_FROM:-your-email@gmail.com}
+      - GF_SMTP_FROM_NAME=NL2PromQL Alerts
+      - GF_SMTP_SKIP_VERIFY=false
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
