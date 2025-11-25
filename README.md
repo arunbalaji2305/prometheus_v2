@@ -143,11 +143,90 @@ See [SUPPORTED_QUERIES.md](SUPPORTED_QUERIES.md) for complete examples.
 Before you begin, ensure you have:
 
 - **Node.js 18+** ([Download](https://nodejs.org/))
-- **Windows Exporter** running on port 9182 ([Download](https://github.com/prometheus-community/windows_exporter))
-- **Prometheus** running on port 9090 ([Download](https://prometheus.io/download/))
+- **Docker & Docker Compose** ([Download](https://www.docker.com/products/docker-desktop))
+- **Windows Exporter** (see installation below)
 - **Google Gemini API Key** ([Get Key](https://makersuite.google.com/app/apikey))
 
-### Option 1: Local Development Setup (Recommended for Development)
+### 🪟 Windows Exporter Setup (Required)
+
+Windows Exporter collects system metrics (CPU, memory, disk, network) that Prometheus scrapes. You need to install this on your host machine **before** running the Docker containers.
+
+#### Installation Steps
+
+1. **Download Windows Exporter**
+   - Visit: https://github.com/prometheus-community/windows_exporter/releases
+   - Download the latest `windows_exporter-*.msi` file (e.g., `windows_exporter-0.25.1-amd64.msi`)
+
+2. **Install Windows Exporter**
+   ```powershell
+   # Run the MSI installer (double-click or use command line)
+   # It will install as a Windows service and start automatically
+   ```
+
+3. **Verify Installation**
+   ```powershell
+   # Check if the service is running
+   Get-Service windows_exporter
+   
+   # Should show: Status = Running
+   ```
+
+4. **Test Metrics Endpoint**
+   - Open browser to: http://localhost:9182/metrics
+   - You should see hundreds of metrics like:
+     ```
+     windows_cpu_time_total{core="0",mode="idle"} 12345.67
+     windows_os_physical_memory_free_bytes 4294967296
+     windows_logical_disk_free_bytes{volume="C:"} 25000000000
+     ```
+
+5. **That's it!** 
+   - Windows Exporter is now running on port **9182**
+   - Prometheus (via Docker) is **already configured** to scrape it using `host.docker.internal:9182`
+   - No additional configuration needed
+
+#### Docker Networking Note
+
+The `prometheus.yml` configuration uses `host.docker.internal:9182` to access Windows Exporter running on your host machine from inside the Docker container. This special DNS name is provided by Docker Desktop and automatically resolves to your host's IP address.
+
+### Option 1: Docker Setup (Recommended - Fastest Setup)
+
+This is the **easiest way** for new users. Just install Windows Exporter (above) and run one command:
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd Prometheus_proj
+
+# 2. Create .env file
+cp .env.example .env
+# Edit .env and add your GEMINI_API_KEY
+
+# 3. Start everything with one command
+docker-compose --profile with-grafana up -d
+```
+
+**What this does:**
+- Pulls pre-built images from Docker Hub (no build needed!)
+- Starts Backend (Node.js on port 4000)
+- Starts Frontend (React on port 80)
+- Starts Prometheus (port 9090) - automatically scrapes `host.docker.internal:9182`
+- Starts Grafana (port 3000) - optional, for advanced dashboards
+
+**Access:**
+- Frontend: http://localhost
+- Backend API: http://localhost:4000
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (admin/admin)
+
+**Verify Prometheus is scraping Windows Exporter:**
+1. Open http://localhost:9090/targets
+2. Look for `windows_exporter` job - should show **Status: UP**
+3. If UP, you're all set! Try a query like "Show CPU usage"
+
+See [docs/docker-setup.md](docs/docker-setup.md) for detailed Docker documentation.
+
+### Option 2: Local Development Setup (For Development)
 
 #### 1. Clone the Repository
 
@@ -156,7 +235,26 @@ git clone <repository-url>
 cd Prometheus_proj
 ```
 
-#### 2. Setup Backend
+#### 2. Install Windows Exporter
+
+Follow the Windows Exporter setup instructions above. You must have it running on port 9182.
+
+#### 3. Install and Configure Prometheus
+
+```bash
+# Download Prometheus from https://prometheus.io/download/
+# Extract and navigate to prometheus directory
+
+# Copy the provided prometheus.yml from this repo
+copy prometheus\prometheus.yml <prometheus-install-dir>\prometheus.yml
+
+# Start Prometheus
+prometheus.exe --config.file=prometheus.yml
+```
+
+Prometheus will run on `http://localhost:9090`
+
+#### 4. Setup Backend
 
 ```bash
 cd backend
@@ -174,7 +272,7 @@ npm run dev
 
 Backend will run on `http://localhost:4000`
 
-#### 3. Setup Frontend
+#### 5. Setup Frontend
 
 ```bash
 cd ../frontend
@@ -192,31 +290,12 @@ npm run dev
 
 Frontend will run on `http://localhost:5173`
 
-#### 4. Access the Application
+#### 6. Access the Application
 
 Open your browser to `http://localhost:5173`
 
-### Option 2: Docker Setup (Recommended for Production)
+**Note:** For local development, you'll need to run Prometheus and Windows Exporter separately on your host machine. The provided `prometheus.yml` works for both Docker and local setups.
 
-```bash
-# Copy and configure environment
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
-
-# Start all services
-docker-compose up -d
-
-# Or with Grafana
-docker-compose --profile with-grafana up -d
-```
-
-**Access**:
-- Frontend: `http://localhost`
-- Backend: `http://localhost:4000`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` (admin/admin)
-
-See [docs/docker-setup.md](docs/docker-setup.md) for detailed Docker documentation.
 
 ## 📁 Project Structure
 
@@ -606,37 +685,42 @@ cat .env
    ```
 3. Ensure Prometheus is scraping Windows Exporter:
    - Open `http://localhost:9090/targets`
-   - Verify `windows` job is **UP**
+   - Verify `windows_exporter` job is **UP**
 
 ---
 
 #### Issue: Windows Exporter not scraped
 
-**Error**: No data in Prometheus for Windows metrics
+**Error**: No data in Prometheus for Windows metrics, or `windows_exporter` target shows DOWN
 
 **Solution**:
-1. Check if Windows Exporter is running:
-   ```bash
+1. **Check if Windows Exporter is running:**
+   ```powershell
+   # Check service status
+   Get-Service windows_exporter
+   
+   # Test metrics endpoint
    curl http://localhost:9182/metrics
    ```
-2. If not installed, download from:
-   https://github.com/prometheus-community/windows_exporter/releases
 
-3. Install and run as a Windows service:
-   ```powershell
-   # Run installer or
-   windows_exporter.exe --collectors.enabled cpu,memory,net,logical_disk
-   ```
+2. **If not installed**, follow installation steps:
+   - Download from: https://github.com/prometheus-community/windows_exporter/releases
+   - Run the `.msi` installer (installs as Windows service)
+   - Verify at http://localhost:9182/metrics
 
-4. Verify Prometheus scrape config (`prometheus/prometheus.yml`):
+3. **Docker Setup**: If using Docker Compose, Prometheus is already configured to use `host.docker.internal:9182`. Just ensure Windows Exporter is installed on your host.
+
+4. **Local Development**: If running Prometheus locally (not in Docker), verify your `prometheus.yml`:
    ```yaml
    scrape_configs:
-     - job_name: 'windows'
+     - job_name: 'windows_exporter'
        static_configs:
          - targets: ['localhost:9182']
    ```
 
-5. Restart Prometheus
+5. Restart Prometheus and check http://localhost:9090/targets
+
+**Note**: The provided `prometheus.yml` uses `host.docker.internal:9182` which works for both Docker Desktop and local setups.
 
 ---
 

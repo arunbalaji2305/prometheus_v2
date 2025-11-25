@@ -12,21 +12,20 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Windows Exporter (adjust for your setup)
-  # If running on Windows host, use host.docker.internal
-  - job_name: 'windows'
+  # Windows Exporter - scrapes system metrics from host machine
+  # Uses host.docker.internal to reach Windows Exporter running on host
+  - job_name: 'windows_exporter'
     static_configs:
       - targets: ['host.docker.internal:9182']
         labels:
-          instance: 'windows-host'
-    # For Docker Desktop on Windows, this works
-    # For Docker on Linux with Windows exporter on another machine, adjust accordingly
+          app: 'windows_exporter'
+          instance: 'localhost:9182'
 
-  # Backend API metrics
+  # Backend API metrics - scrapes from backend container
   - job_name: 'node_backend'
     static_configs:
-      - targets: ['localhost:4000']
+      - targets: ['backend:4000']
         labels:
           app: 'node_backend'
-          instance: 'localhost:4000'
+          instance: 'backend:4000'
 
