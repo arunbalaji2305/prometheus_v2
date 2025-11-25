@@ -783,6 +783,38 @@ curl "http://localhost:9090/api/v1/query?query=up"
 
 ---
 
+#### Issue: Grafana alerting conflict error
+
+**Error**: `failed to read unified alerting enabled setting: legacy and unified alerting cannot both be enabled`
+
+**Solution**:
+This happens when Grafana has cached legacy alerting settings in its volume. Run the fix script:
+
+**Windows:**
+```bash
+# Use the automated fix script
+./fix-grafana.bat
+```
+
+**Manual Steps:**
+```bash
+# Stop all containers
+docker-compose --profile with-grafana down
+
+# Remove Grafana volume (resets Grafana data)
+docker volume rm prometheus_proj_grafana-data
+
+# Pull latest images
+docker-compose --profile with-grafana pull
+
+# Start fresh
+docker-compose --profile with-grafana up -d
+```
+
+**Note**: This will reset Grafana to default settings (admin/admin). The latest docker-compose.yml explicitly sets `GF_ALERTING_ENABLED=false` to prevent this conflict.
+
+---
+
 #### Issue: Port already in use
 
 **Error**: `EADDRINUSE: address already in use :::4000`
