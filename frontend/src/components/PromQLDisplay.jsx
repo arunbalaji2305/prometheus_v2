@@ -100,10 +100,10 @@ export default function PromQLDisplay({ naturalQuery, promqlQuery, lookback }) {
             <LayoutDashboard className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-300">
               <p className="mb-1">
-                <strong>Dashboard:</strong> Opens the comprehensive Windows Exporter Dashboard with all system metrics (CPU, Memory, Disk, Network).
+                <strong>Dashboard:</strong> Opens the comprehensive Windows System Metrics dashboard with CPU, Memory, Disk, and Network panels.
               </p>
               <p>
-                <strong>Explore:</strong> Opens Grafana Explore view with just your specific query for detailed investigation.
+                <strong>Explore:</strong> Opens Grafana Explore view with your specific query for detailed analysis.
               </p>
             </div>
           </div>

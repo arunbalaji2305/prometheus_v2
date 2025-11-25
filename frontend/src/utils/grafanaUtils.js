@@ -64,7 +64,7 @@ export function generateGrafanaExploreUrl(promqlQuery, lookbackMinutes = 15) {
 
 /**
  * Generate Grafana Dashboard URL
- * Opens the comprehensive Windows Exporter Dashboard
+ * Opens the auto-provisioned Windows System Metrics dashboard
  * @param {string} naturalQuery - User's natural language query
  * @param {string} promqlQuery - Generated PromQL query
  * @param {number} lookbackMinutes - Time range in minutes
@@ -77,21 +77,17 @@ export function generateGrafanaDashboardUrl(naturalQuery, promqlQuery, lookbackM
   const now = Date.now();
   const from = now - lookbackMinutes * 60 * 1000;
 
-  // Use the existing Windows Exporter Dashboard
-  const dashboardUid = 'Kdh0OoSGz';
+  // Use the auto-provisioned Windows System Metrics dashboard
+  const dashboardUid = 'windows-system-metrics';
   
   const params = new URLSearchParams({
     orgId: '1',
     from: from.toString(),
     to: now.toString(),
-    refresh: '30s',
-    'var-job': 'windows Exporter',
-    'var-hostname': '$__all',
-    'var-instance': 'localhost:9182',
-    'var-show_hostname': 'ABREAL'
+    refresh: '30s'
   });
 
-  return `${config.grafanaBaseUrl}/d/${dashboardUid}/windows-exporter-dashboard-2025-v0-312b-compatible?${params.toString()}`;
+  return `${config.grafanaBaseUrl}/d/${dashboardUid}/windows-system-metrics?${params.toString()}`;
 }
 
 /**
