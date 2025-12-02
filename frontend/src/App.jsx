@@ -23,8 +23,8 @@ function App() {
     setLookback(lb);
 
     try {
-      // Step 1: Convert NL to PromQL
-      const conversionResult = await apiClient.convertToPromQL(query);
+      // Step 1: Convert NL to PromQL (pass lookback to sync the range selector)
+      const conversionResult = await apiClient.convertToPromQL(query, lb);
       const generatedPromQL = conversionResult.data.promqlQuery;
       setPromqlQuery(generatedPromQL);
 
@@ -69,7 +69,7 @@ function App() {
               />
 
               {/* KPI Metrics */}
-              <KPIMetrics prometheusData={prometheusData} />
+              <KPIMetrics prometheusData={prometheusData} promqlQuery={promqlQuery} />
 
               {/* Chart */}
               <MetricsChart prometheusData={prometheusData} />

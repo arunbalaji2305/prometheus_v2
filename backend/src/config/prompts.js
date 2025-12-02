@@ -48,8 +48,9 @@ CRITICAL PROMQL SYNTAX RULES:
 
 WINDOWS METRICS REFERENCE:
 - CPU: windows_cpu_time_total (COUNTER - use with rate())
-- Memory: windows_memory_available_bytes (GAUGE - use directly)
-- Memory Total: windows_cs_physical_memory_bytes (GAUGE - use directly)
+- Memory Available: windows_memory_available_bytes (GAUGE - use directly)
+- Memory Total: windows_memory_physical_total_bytes (GAUGE - use directly)
+- Memory Used: windows_memory_physical_total_bytes - windows_memory_available_bytes
 - Disk: windows_logical_disk_read_bytes_total, windows_logical_disk_write_bytes_total (COUNTERS - use with rate())
 - Network: windows_net_bytes_sent_total, windows_net_bytes_received_total (COUNTERS - use with rate())
 
@@ -89,7 +90,10 @@ QUERY PATTERNS - Understand User Intent:
    Output: rate(windows_logical_disk_read_bytes_total[5m]) + rate(windows_logical_disk_write_bytes_total[5m])
 
    User: "Memory used" or "Used memory"
-   Output: windows_cs_physical_memory_bytes - windows_memory_available_bytes
+   Output: windows_memory_physical_total_bytes - windows_memory_available_bytes
+
+   User: "Memory usage percentage" or "Memory usage"
+   Output: 100 - ((windows_memory_available_bytes / windows_memory_physical_total_bytes) * 100)
 
    User: "Total network traffic" or "All network bandwidth"
    Output: sum(rate(windows_net_bytes_total[5m]))
@@ -116,7 +120,7 @@ QUERY PATTERNS - Understand User Intent:
    Output: avg(rate(windows_net_bytes_total[5m]))
 
    User: "Total memory across all servers"
-   Output: sum(windows_cs_physical_memory_bytes)
+   Output: sum(windows_memory_physical_total_bytes)
 
 7. MULTIPLE TIME RANGES:
    - "last 5 minutes" → [5m]

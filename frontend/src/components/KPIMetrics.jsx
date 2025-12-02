@@ -1,8 +1,8 @@
 import React from 'react';
 import { Activity, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-import { calculateKPIs, formatNumber } from '../utils/chartUtils';
+import { calculateKPIs, formatNumber, detectUnit } from '../utils/chartUtils';
 
-export default function KPIMetrics({ prometheusData }) {
+export default function KPIMetrics({ prometheusData, promqlQuery }) {
   if (!prometheusData) {
     return null;
   }
@@ -12,6 +12,9 @@ export default function KPIMetrics({ prometheusData }) {
   if (!kpis) {
     return null;
   }
+
+  // Detect the unit from the PromQL query
+  const unit = promqlQuery ? detectUnit(promqlQuery) : null;
 
   const metrics = [
     {
@@ -57,7 +60,7 @@ export default function KPIMetrics({ prometheusData }) {
                   <Icon className={`w-4 h-4 ${metric.color}`} />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-white">{formatNumber(metric.value)}</p>
+              <p className="text-2xl font-bold text-white">{formatNumber(metric.value, 2, unit)}</p>
             </div>
           </div>
         );

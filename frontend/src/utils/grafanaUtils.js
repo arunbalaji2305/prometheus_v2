@@ -41,25 +41,25 @@ export function generateGrafanaExploreUrl(promqlQuery, lookbackMinutes = 15) {
   const now = Date.now();
   const from = now - lookbackMinutes * 60 * 1000;
 
-  const exploreParams = {
-    datasource: 'Prometheus',
+  // Grafana Explore state with proper datasource UID
+  const leftPane = {
+    datasource: 'ef5whjuon7f9cd', // Actual Prometheus datasource UID
     queries: [
       {
         refId: 'A',
         expr: promqlQuery,
         range: true,
-        instant: false,
-        exemplar: true,
-      },
+        instant: false
+      }
     ],
     range: {
       from: from.toString(),
-      to: now.toString(),
-    },
+      to: now.toString()
+    }
   };
 
-  const encodedParams = encodeURIComponent(JSON.stringify(exploreParams));
-  return `${config.grafanaBaseUrl}/explore?orgId=1&left=${encodedParams}`;
+  const encodedLeft = encodeURIComponent(JSON.stringify(leftPane));
+  return `${config.grafanaBaseUrl}/explore?orgId=1&left=${encodedLeft}`;
 }
 
 /**

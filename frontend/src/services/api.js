@@ -42,11 +42,15 @@ class ApiClient {
   /**
    * Convert natural language to PromQL
    * @param {string} query - Natural language query
+   * @param {number} lookbackMinutes - Lookback time in minutes (optional)
    */
-  async convertToPromQL(query) {
+  async convertToPromQL(query, lookbackMinutes) {
     return this.request(API_ENDPOINTS.nl2promql, {
       method: 'POST',
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ 
+        query,
+        lookback_minutes: lookbackMinutes 
+      }),
     });
   }
 

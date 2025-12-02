@@ -23,7 +23,8 @@ function isLowIntent(input) {
  * 
  * Request body:
  * {
- *   "query": "CPU usage for the last 15 minutes"
+ *   "query": "CPU usage for the last 15 minutes",
+ *   "lookback_minutes": 15  // Optional: time range for the chart
  * }
  * 
  * Response:
@@ -39,12 +40,12 @@ router.post(
   '/',
   validateBody(schemas.nl2promql),
   asyncHandler(async (req, res) => {
-    const { query } = req.body;
+    const { query, lookback_minutes } = req.body;
 
     // Sanitize input
     const sanitizedQuery = sanitizeInput(query);
 
-    logger.info({ originalQuery: query, sanitizedQuery }, 'NL2PromQL request');
+    logger.info({ originalQuery: query, sanitizedQuery, lookback_minutes }, 'NL2PromQL request');
 
     // Guardrail: reject very low-intent/gibberish inputs
     if (isLowIntent(sanitizedQuery)) {
@@ -61,8 +62,22 @@ router.post(
     // Convert to PromQL using Gemini
     const promqlQuery = await geminiService.convertToPromQL(sanitizedQuery);
 
+    // If lookback_minutes is provided, adjust the range selector in the PromQL
+    let adjustedPromQL = promqlQuery;
+    if (lookback_minutes && lookback_minutes > 0) {
+      // Replace range selectors like [5m], [15m], [1h] with the lookback time
+      const rangePattern = /\[(\d+)([mhd])\]/g;
+      adjustedPromQL = promqlQuery.replace(rangePattern, `[${lookback_minutes}m]`);
+      
+      logger.info({ 
+        original: promqlQuery, 
+        adjusted: adjustedPromQL, 
+        lookback_minutes 
+      }, 'Adjusted PromQL range selector to match lookback');
+    }
+
     // Validate metric names against Prometheus to avoid nonsense-but-valid outputs
-    const { unknown, known } = await prometheusService.validateMetricsInQuery(promqlQuery);
+    const { unknown, known } = await prometheusService.validateMetricsInQuery(adjustedPromQL);
     if (unknown.length > 0) {
       return res.status(422).json({
         success: false,
@@ -82,7 +97,7 @@ router.post(
       success: true,
       data: {
         naturalLanguageQuery: sanitizedQuery,
-        promqlQuery,
+        promqlQuery: adjustedPromQL,
       },
     });
   })

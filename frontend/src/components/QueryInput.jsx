@@ -7,10 +7,46 @@ export default function QueryInput({ onSubmit, loading }) {
   const [lookback, setLookback] = useState(15);
   const [step, setStep] = useState('15s');
 
+  // Extract time from query (e.g., "for 5 minutes", "last 30 min", "15m")
+  const extractTimeFromQuery = (queryText) => {
+    const text = queryText.toLowerCase();
+    
+    // Pattern: "for X minutes/mins/min/m"
+    const forPattern = /for\s+(\d+)\s*(minutes?|mins?|m)\b/i;
+    // Pattern: "last X minutes/mins/min/m"
+    const lastPattern = /last\s+(\d+)\s*(minutes?|mins?|m)\b/i;
+    // Pattern: "X minutes/mins/min/m"
+    const directPattern = /\b(\d+)\s*(minutes?|mins?|m)\b/i;
+    
+    let match = text.match(forPattern) || text.match(lastPattern) || text.match(directPattern);
+    
+    if (match) {
+      return parseInt(match[1]);
+    }
+    
+    // Check for hours
+    const hourPattern = /(\d+)\s*(hours?|hrs?|h)\b/i;
+    match = text.match(hourPattern);
+    if (match) {
+      return parseInt(match[1]) * 60; // Convert to minutes
+    }
+    
+    return null; // No time found, use current lookback
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (query.trim() && !loading) {
-      onSubmit({ query: query.trim(), lookback, step });
+      // Try to extract time from query
+      const extractedTime = extractTimeFromQuery(query);
+      const finalLookback = extractedTime !== null ? extractedTime : lookback;
+      
+      // Update lookback field to show extracted value
+      if (extractedTime !== null) {
+        setLookback(extractedTime);
+      }
+      
+      onSubmit({ query: query.trim(), lookback: finalLookback, step });
     }
   };
 

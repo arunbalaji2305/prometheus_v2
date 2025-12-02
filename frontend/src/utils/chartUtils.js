@@ -124,14 +124,37 @@ export function calculateKPIs(prometheusData) {
 
 /**
  * Format large numbers with appropriate units
+ * @param {number} value - The number to format
+ * @param {number} decimals - Number of decimal places
+ * @param {string} unit - Optional unit (bytes, percent, rate, etc.)
  */
-export function formatNumber(value, decimals = 2) {
+export function formatNumber(value, decimals = 2, unit = null) {
   if (value === null || value === undefined || isNaN(value)) {
     return 'N/A';
   }
 
   const absValue = Math.abs(value);
 
+  // Handle bytes specifically
+  if (unit === 'bytes' || unit === 'bytes/s') {
+    if (absValue >= 1073741824) { // 1 GB
+      return `${(value / 1073741824).toFixed(decimals)} GB${unit === 'bytes/s' ? '/s' : ''}`;
+    }
+    if (absValue >= 1048576) { // 1 MB
+      return `${(value / 1048576).toFixed(decimals)} MB${unit === 'bytes/s' ? '/s' : ''}`;
+    }
+    if (absValue >= 1024) { // 1 KB
+      return `${(value / 1024).toFixed(decimals)} KB${unit === 'bytes/s' ? '/s' : ''}`;
+    }
+    return `${value.toFixed(decimals)} B${unit === 'bytes/s' ? '/s' : ''}`;
+  }
+
+  // Handle percentages
+  if (unit === 'percent' || unit === '%') {
+    return `${value.toFixed(decimals)}%`;
+  }
+
+  // Handle generic large numbers
   if (absValue >= 1e9) {
     return `${(value / 1e9).toFixed(decimals)}B`;
   }
@@ -151,17 +174,26 @@ export function formatNumber(value, decimals = 2) {
 export function detectUnit(promqlQuery) {
   const query = promqlQuery.toLowerCase();
 
-  if (query.includes('bytes') || query.includes('memory')) {
-    return 'bytes';
+  // Check for percentage queries
+  if (query.includes('* 100') || query.includes('percent')) {
+    return 'percent';
   }
-  if (query.includes('percentage') || query.includes('* 100')) {
-    return '%';
-  }
+
+  // Check for rate queries (which return per-second values)
   if (query.includes('rate(') || query.includes('irate(')) {
+    // If it's a bytes metric with rate, it's bytes per second
+    if (query.includes('bytes')) {
+      return 'bytes/s';
+    }
     return '/s';
   }
 
-  return '';
+  // Check for byte metrics
+  if (query.includes('bytes') || query.includes('memory')) {
+    return 'bytes';
+  }
+
+  return null;
 }
 
 /**
