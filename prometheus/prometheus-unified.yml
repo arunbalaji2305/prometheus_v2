@@ -1,0 +1,166 @@
+# Unified Prometheus Configuration
+# Supports Windows, Linux, and multiple service exporters
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'prometheus-nl2promql'
+    environment: 'production'
+
+# Scrape configurations for all exporters
+scrape_configs:
+  # ==================================
+  # CORE MONITORING
+  # ==================================
+  
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          type: 'core'
+
+  # ==================================
+  # SYSTEM MONITORING
+  # ==================================
+  
+  # Windows Exporter - Windows system metrics
+  # Collects CPU, Memory, Disk, Network metrics from Windows hosts
+  - job_name: 'windows_exporter'
+    static_configs:
+      - targets: ['host.docker.internal:9182']
+        labels:
+          platform: 'windows'
+          type: 'system'
+          os: 'windows'
+
+  # Node Exporter - Linux system metrics
+  # Collects CPU, Memory, Disk, Network metrics from Linux hosts
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+        labels:
+          platform: 'linux'
+          type: 'system'
+          os: 'linux'
+
+  # Backend API - NL2PromQL service metrics
+  - job_name: 'node_backend'
+    static_configs:
+      - targets: ['backend:4000']
+        labels:
+          service: 'nl2promql-backend'
+          type: 'application'
+
+  # ==================================
+  # DATABASE MONITORING
+  # ==================================
+  
+  # MySQL Exporter - MySQL database metrics
+  # Enable this when MySQL is running
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+        labels:
+          service: 'mysql'
+          type: 'database'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: mysql-exporter:9104
+
+  # PostgreSQL Exporter - PostgreSQL database metrics
+  # Enable this when PostgreSQL is running
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          type: 'database'
+
+  # Redis Exporter - Redis cache metrics
+  # Enable this when Redis is running
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          type: 'cache'
+
+  # MongoDB Exporter - MongoDB database metrics
+  # Enable this when MongoDB is running
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          service: 'mongodb'
+          type: 'database'
+
+  # ==================================
+  # WEB SERVER MONITORING
+  # ==================================
+  
+  # Nginx Exporter - Nginx web server metrics
+  # Enable this when Nginx is running
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+        labels:
+          service: 'nginx'
+          type: 'webserver'
+
+  # ==================================
+  # CONTAINER MONITORING
+  # ==================================
+  
+  # cAdvisor - Docker container metrics
+  # Enable this for Docker container monitoring
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+          type: 'containers'
+    metric_relabel_configs:
+      # Drop unnecessary container metrics to reduce storage
+      - source_labels: [__name__]
+        regex: 'container_(network_tcp_usage_total|network_udp_usage_total|tasks_state|cpu_load_average_10s)'
+        action: drop
+
+  # ==================================
+  # MESSAGE QUEUE MONITORING
+  # ==================================
+  
+  # RabbitMQ Exporter - RabbitMQ message queue metrics
+  # Enable this when RabbitMQ is running
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq-exporter:9419']
+        labels:
+          service: 'rabbitmq'
+          type: 'messagequeue'
+
+  # Kafka Exporter - Kafka message queue metrics
+  # Enable this when Kafka is running
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka'
+          type: 'messagequeue'
+
+# Alerting configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files for alerts (optional)
+# rule_files:
+#   - "alerts/*.yml"

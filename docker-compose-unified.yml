@@ -1,0 +1,249 @@
+services:
+  # ===========================================
+  # CORE SERVICES
+  # ===========================================
+  
+  # Prometheus - Time Series Database
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus-unified.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - monitoring
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API (NL2PromQL Service)
+  backend:
+    image: arunbalaji23/prometheus-nl2promql-backend:latest
+    container_name: nl2promql-backend
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PROMETHEUS_URL=http://prometheus:9090
+      - NODE_ENV=production
+      - CORS_ORIGIN=http://localhost:5173,http://localhost
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (React Web UI)
+  frontend:
+    image: arunbalaji23/prometheus-nl2promql-frontend:latest
+    container_name: nl2promql-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # DATABASE EXPORTERS
+  # ===========================================
+  
+  # MySQL Exporter (Optional - Enable when you have MySQL)
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysql-exporter
+    ports:
+      - "9104:9104"
+    environment:
+      - DATA_SOURCE_NAME=${MYSQL_USER:-root}:${MYSQL_PASSWORD:-password}@(${MYSQL_HOST:-mysql}:3306)/
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - mysql
+
+  # PostgreSQL Exporter (Optional - Enable when you have PostgreSQL)
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-postgres}?sslmode=disable
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - postgres
+
+  # Redis Exporter (Optional - Enable when you have Redis)
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=${REDIS_HOST:-redis}:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - redis
+
+  # MongoDB Exporter (Optional - Enable when you have MongoDB)
+  mongodb-exporter:
+    image: percona/mongodb_exporter:latest
+    container_name: mongodb-exporter
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://${MONGODB_USER:-admin}:${MONGODB_PASSWORD:-password}@${MONGODB_HOST:-mongodb}:27017
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - mongodb
+
+  # ===========================================
+  # WEB SERVER EXPORTERS
+  # ===========================================
+  
+  # Nginx Exporter (Optional - Enable when you have Nginx)
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    ports:
+      - "9113:9113"
+    command:
+      - -nginx.scrape-uri=http://${NGINX_HOST:-nginx}:${NGINX_PORT:-80}/stub_status
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - nginx
+
+  # ===========================================
+  # CONTAINER MONITORING
+  # ===========================================
+  
+  # cAdvisor - Docker Container Metrics (Optional)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    profiles:
+      - containers
+
+  # ===========================================
+  # MESSAGE QUEUE EXPORTERS
+  # ===========================================
+  
+  # RabbitMQ Exporter (Optional - Enable when you have RabbitMQ)
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    container_name: rabbitmq-exporter
+    ports:
+      - "9419:9419"
+    environment:
+      - RABBIT_URL=http://${RABBITMQ_HOST:-rabbitmq}:15672
+      - RABBIT_USER=${RABBITMQ_USER:-guest}
+      - RABBIT_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - rabbitmq
+
+  # Kafka Exporter (Optional - Enable when you have Kafka)
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    ports:
+      - "9308:9308"
+    command:
+      - --kafka.server=${KAFKA_HOST:-kafka}:9092
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - kafka
+
+  # ===========================================
+  # GRAFANA (OPTIONAL)
+  # ===========================================
+  
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ALERTING_ENABLED=false
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      # Email notification settings
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=${SMTP_HOST:-smtp.gmail.com:587}
+      - GF_SMTP_USER=${SMTP_USER:-your-email@gmail.com}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD:-your-app-password}
+      - GF_SMTP_FROM_ADDRESS=${SMTP_FROM:-your-email@gmail.com}
+      - GF_SMTP_FROM_NAME=NL2PromQL Alerts
+      - GF_SMTP_SKIP_VERIFY=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    restart: unless-stopped
+    profiles:
+      - with-grafana
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
