@@ -19,7 +19,7 @@ export default function Header() {
           </div>
           
           <a
-            href="https://github.com"
+            href="https://github.com/arunbalaji2305/prometheus_v2"
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 text-gray-400 hover:text-white transition-colors"
