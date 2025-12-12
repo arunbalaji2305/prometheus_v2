@@ -15,14 +15,23 @@ function formatErrorResponse(error, statusCode) {
 }
 
 /**
+ * Sanitize error message to remove API keys
+ */
+function sanitizeError(message) {
+  if (!message) return message;
+  return message.replace(/key=AIza[A-Za-z0-9_-]{35}/g, 'key=***REDACTED***')
+                .replace(/AIza[A-Za-z0-9_-]{35}/g, '***REDACTED***');
+}
+
+/**
  * Global error handling middleware
  */
 export function errorHandler(err, req, res, _next) {
-  // Log the error
+  // Log the error with sanitized stack trace
   logger.error(
     {
-      error: err.message,
-      stack: err.stack,
+      error: sanitizeError(err.message),
+      stack: sanitizeError(err.stack),
       url: req.url,
       method: req.method,
     },

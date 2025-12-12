@@ -26,10 +26,20 @@ function App() {
       // Step 1: Convert NL to PromQL (pass lookback to sync the range selector)
       const conversionResult = await apiClient.convertToPromQL(query, lb);
       const generatedPromQL = conversionResult.data.promqlQuery;
+      const detectedLookback = conversionResult.data.detectedLookback;
+
       setPromqlQuery(generatedPromQL);
 
+      // If the AI detected a specific lookback (e.g. "45 minutes"), update the state
+      // so the chart and UI reflect this intent.
+      let effectiveLookback = lb;
+      if (detectedLookback) {
+        setLookback(detectedLookback);
+        effectiveLookback = detectedLookback;
+      }
+
       // Step 2: Query Prometheus with the generated PromQL
-      const prometheusResult = await apiClient.queryPrometheus(generatedPromQL, lb, step);
+      const prometheusResult = await apiClient.queryPrometheus(generatedPromQL, effectiveLookback, step);
       setPrometheusData(prometheusResult.data);
     } catch (err) {
       console.error('Query error:', err);
@@ -56,7 +66,11 @@ function App() {
           {error && <ErrorAlert error={error} onDismiss={() => setError(null)} />}
 
           {/* Query Input */}
-          <QueryInput onSubmit={handleSubmit} loading={loading} />
+          <QueryInput 
+            onSubmit={handleSubmit} 
+            loading={loading} 
+            externalLookback={lookback}
+          />
 
           {/* Results Section */}
           {hasResults && (

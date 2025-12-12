@@ -13,13 +13,13 @@ class GeminiService {
       candidateCount: 1,
     };
     // List of models to try in order of preference
-    // Updated to use models that are actually available with this API key
+    // Try stable models first that have better quota availability
     this.modelNames = [
-      'gemini-2.5-flash',                    // Latest stable flash model
-      'gemini-2.5-flash-preview-05-20',     // Preview version (confirmed working)
-      'gemini-2.5-pro',                      // Latest pro model
+      'gemini-2.5-flash',                    // Newest stable flash model
+      'gemini-2.0-flash-lite-preview-02-05', // Lite model (often better availability)
+      'gemini-2.0-flash-001',                // Specific version (sometimes has separate quota)
+      'gemini-2.0-flash',                    // Previous stable flash
       'gemini-flash-latest',                 // Latest flash (alias)
-      'gemini-pro-latest',                   // Latest pro (alias)
     ];
     
     logger.info({ 
@@ -32,6 +32,15 @@ class GeminiService {
   }
 
   /**
+   * Sanitize error message to remove any API keys
+   */
+  sanitizeErrorMessage(message) {
+    if (!message) return message;
+    // Remove API keys from URLs like: key=AIzaSy...
+    return message.replace(/key=AIza[A-Za-z0-9_-]{35}/g, 'key=***REDACTED***');
+  }
+
+  /**
    * Extract error message from error object, checking nested properties
    */
   extractErrorMessage(error) {
@@ -39,24 +48,25 @@ class GeminiService {
     
     // Check main message
     if (error.message) {
-      return error.message;
+      return this.sanitizeErrorMessage(error.message);
     }
     
     // Check cause
     if (error.cause?.message) {
-      return error.cause.message;
+      return this.sanitizeErrorMessage(error.cause.message);
     }
     
     // Check if it's a string
     if (typeof error === 'string') {
-      return error;
+      return this.sanitizeErrorMessage(error);
     }
     
-    // Try to stringify
+    // Try to stringify but sanitize the result
     try {
-      return JSON.stringify(error);
+      const stringified = JSON.stringify(error);
+      return this.sanitizeErrorMessage(stringified);
     } catch {
-      return String(error);
+      return this.sanitizeErrorMessage(String(error));
     }
   }
 
@@ -89,7 +99,7 @@ class GeminiService {
       errorMessage.includes('model is overloaded') ||
       errorMessage.includes('try again later') ||
       // Rate limiting (but not quota exceeded)
-      (errorMessage.includes('429') && !errorMessage.includes('quota exceeded')) ||
+      (errorMessage.includes('429') && !errorMessage.includes('quota')) ||
       errorMessage.includes('rate limit') ||
       // Timeout errors
       errorMessage.includes('timeout') ||
@@ -203,22 +213,44 @@ class GeminiService {
         
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        let promqlQuery = response.text().trim();
-
-        // Clean up the response - remove any markdown formatting
-        promqlQuery = promqlQuery
-          .replace(/```promql\n?/gi, '')
+        let responseText = response.text().trim();
+        
+        // Clean up markdown code blocks if present
+        responseText = responseText
+          .replace(/```json\n?/gi, '')
           .replace(/```\n?/g, '')
-          .replace(/^promql:\s*/i, '')
-          .replace(/^output:\s*/i, '')
-          .replace(/^query:\s*/i, '')
           .trim();
 
-        // Remove any trailing punctuation that might have been added
-        promqlQuery = promqlQuery.replace(/[.;,]$/, '');
+        let promqlQuery = '';
+        let detectedLookback = null;
 
-        // Respect "no-answer" fallback from the prompt
-        if (/^none$/i.test(promqlQuery)) {
+        // Try to parse as JSON
+        try {
+          const jsonResponse = JSON.parse(responseText);
+          promqlQuery = jsonResponse.promql;
+          detectedLookback = jsonResponse.lookback;
+        } catch (e) {
+          // Fallback: treat as raw string if not JSON
+          logger.warn({ responseText }, 'Failed to parse JSON response, treating as raw string');
+          promqlQuery = responseText;
+        }
+
+        // Clean up the PromQL query
+        if (promqlQuery) {
+          promqlQuery = promqlQuery
+            .replace(/```promql\n?/gi, '')
+            .replace(/```\n?/g, '')
+            .replace(/^promql:\s*/i, '')
+            .replace(/^output:\s*/i, '')
+            .replace(/^query:\s*/i, '')
+            .trim();
+            
+          // Remove any trailing punctuation
+          promqlQuery = promqlQuery.replace(/[.;,]$/, '');
+        }
+
+        // Respect "no-answer" fallback
+        if (!promqlQuery || /^none$/i.test(promqlQuery)) {
           const noAnswerError = new Error('The request is too vague or out-of-scope to generate a safe PromQL query. Please specify a metric (e.g., CPU, memory, disk, network) and optional time window.');
           noAnswerError.code = 'NO_ANSWER';
           noAnswerError.statusCode = 422;
@@ -226,7 +258,7 @@ class GeminiService {
         }
 
         // Validate that we got something
-        if (!promqlQuery || promqlQuery.length < 3) {
+        if (promqlQuery.length < 3) {
           throw new Error('Gemini returned an empty or invalid PromQL query');
         }
 
@@ -253,7 +285,6 @@ class GeminiService {
           }, 'PromQL validation failed');
           
           // If validation fails, treat it as a retryable error
-          // so we try the next model which might generate better syntax
           lastError = new Error(`Validation failed: ${validationError.message}. Generated query: ${promqlQuery}`);
           continue; // Try next model
         }
@@ -264,37 +295,39 @@ class GeminiService {
         
         logger.info({ 
           promqlQuery, 
+          detectedLookback,
           model: modelName,
           success: true 
         }, 'Successfully generated PromQL');
         
-        return promqlQuery;
+        return { promql: promqlQuery, lookback: detectedLookback };
       } catch (error) {
         const errorMessage = this.extractErrorMessage(error);
+        const errorMessageLower = errorMessage.toLowerCase();
         lastError = error;
         
         logger.warn({ 
           model: modelName,
           attempt: i + 1,
           error: errorMessage,
-          errorType: error.constructor?.name,
-          fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
+          errorType: error.constructor?.name
         }, 'Model attempt failed');
         
-        // Check for API key errors specifically
+        // Check for API key errors specifically (case-insensitive)
         const isApiKeyError = (
-          errorMessage.includes('API_KEY') || 
-          errorMessage.includes('API key') ||
-          errorMessage.includes('401') ||
-          errorMessage.includes('unauthorized') ||
-          errorMessage.includes('permission denied') ||
-          errorMessage.includes('invalid api key')
+          errorMessageLower.includes('api_key') || 
+          errorMessageLower.includes('api key') ||
+          errorMessageLower.includes('401') ||
+          errorMessageLower.includes('unauthorized') ||
+          errorMessageLower.includes('permission denied') ||
+          errorMessageLower.includes('invalid api key')
         );
         
         // Check for quota exceeded (don't retry other models)
         const isQuotaExceeded = (
-          errorMessage.includes('quota exceeded') ||
-          (errorMessage.includes('429') && errorMessage.includes('quota'))
+          errorMessageLower.includes('quota exceeded') ||
+          errorMessageLower.includes('exceeded your current quota') ||
+          (errorMessageLower.includes('429') && errorMessageLower.includes('quota'))
         );
         
         // If it's a retryable error (overloaded, 503, etc.), try the next model
@@ -341,8 +374,7 @@ class GeminiService {
     const finalErrorMessage = this.extractErrorMessage(lastError);
     logger.error({ 
       error: finalErrorMessage,
-      attemptedModels: attemptedModels.join(', '),
-      fullError: lastError ? JSON.stringify(lastError, Object.getOwnPropertyNames(lastError)) : 'No error object'
+      attemptedModels: attemptedModels.join(', ')
     }, 'Failed to convert NL to PromQL with all models');
     
     // Check for API key errors with more specific detection

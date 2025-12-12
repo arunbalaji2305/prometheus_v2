@@ -60,19 +60,30 @@ router.post(
     }
 
     // Convert to PromQL using Gemini
-    const promqlQuery = await geminiService.convertToPromQL(sanitizedQuery);
+    const result = await geminiService.convertToPromQL(sanitizedQuery);
+    const promqlQuery = result.promql;
+    const detectedLookback = result.lookback;
 
-    // If lookback_minutes is provided, adjust the range selector in the PromQL
+    // Determine effective lookback:
+    // If the AI detected a specific time window in the text (e.g. "last 45 minutes"),
+    // that should take precedence over the default UI state.
+    let effectiveLookback = lookback_minutes;
+    if (detectedLookback) {
+      effectiveLookback = detectedLookback;
+    }
+
+    // If effectiveLookback is defined, adjust the range selector in the PromQL
     let adjustedPromQL = promqlQuery;
-    if (lookback_minutes && lookback_minutes > 0) {
+    if (effectiveLookback && effectiveLookback > 0) {
       // Replace range selectors like [5m], [15m], [1h] with the lookback time
       const rangePattern = /\[(\d+)([mhd])\]/g;
-      adjustedPromQL = promqlQuery.replace(rangePattern, `[${lookback_minutes}m]`);
+      adjustedPromQL = promqlQuery.replace(rangePattern, `[${effectiveLookback}m]`);
       
       logger.info({ 
         original: promqlQuery, 
         adjusted: adjustedPromQL, 
-        lookback_minutes 
+        effectiveLookback,
+        detectedLookback
       }, 'Adjusted PromQL range selector to match lookback');
     }
 
@@ -96,8 +107,9 @@ router.post(
     res.json({
       success: true,
       data: {
-        naturalLanguageQuery: sanitizedQuery,
+        naturalLanguageQuery: query,
         promqlQuery: adjustedPromQL,
+        detectedLookback: effectiveLookback
       },
     });
   })

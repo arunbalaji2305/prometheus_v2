@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Sparkles } from 'lucide-react';
 import { DEMO_QUERIES } from '../config';
 
-export default function QueryInput({ onSubmit, loading }) {
+export default function QueryInput({ onSubmit, loading, externalLookback }) {
   const [query, setQuery] = useState('');
   const [lookback, setLookback] = useState(15);
   const [step, setStep] = useState('15s');
+
+  // Sync with external lookback changes (e.g. from AI detection)
+  useEffect(() => {
+    if (externalLookback) {
+      setLookback(externalLookback);
+    }
+  }, [externalLookback]);
 
   // Extract time from query (e.g., "for 5 minutes", "last 30 min", "15m")
   const extractTimeFromQuery = (queryText) => {

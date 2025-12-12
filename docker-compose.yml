@@ -24,6 +24,7 @@ services:
 
   # Backend API
   backend:
+    build: ./backend
     image: arunbalaji23/prometheus-nl2promql-backend:latest
     container_name: nl2promql-backend
     ports:
@@ -47,6 +48,7 @@ services:
 
   # Frontend
   frontend:
+    build: ./frontend
     image: arunbalaji23/prometheus-nl2promql-frontend:latest
     container_name: nl2promql-frontend
     ports:

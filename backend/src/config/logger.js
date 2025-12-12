@@ -16,7 +16,15 @@ export const logger = pino({
       }
     : undefined,
   redact: {
-    paths: ['req.headers.authorization', 'req.headers["x-api-key"]', '*.apiKey', '*.password'],
+    paths: [
+      'req.headers.authorization', 
+      'req.headers["x-api-key"]', 
+      '*.apiKey', 
+      '*.password',
+      '*.geminiApiKey',
+      'env.GEMINI_API_KEY',
+      'process.env.GEMINI_API_KEY'
+    ],
     remove: true,
   },
 });
